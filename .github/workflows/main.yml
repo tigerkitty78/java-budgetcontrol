@@ -57,6 +57,7 @@ jobs:
 
 
       - name: Start Spring Boot application and check health
+        working-directory: java-budgetcontrol/employaa
         env:
           SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:3306/testdb
           SPRING_DATASOURCE_USERNAME: testuser
