@@ -49,9 +49,12 @@ jobs:
 
       - name: Build and run tests
         run: mvn clean verify --batch-mode
+        working-directory: ../../../java-budgetcontrol/employaa
 
       - name: Package the application
         run: mvn package --batch-mode
+        working-directory: ../../../java-budgetcontrol/employaa
+
 
       - name: Start Spring Boot application and check health
         env:
