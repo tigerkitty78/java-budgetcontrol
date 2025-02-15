@@ -1,0 +1,68 @@
+name: Java CI/CD
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-run:
+    runs-on: windows-latest
+#iii
+    # Define a MySQL service for your application
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: testdb
+          MYSQL_USER: testuser
+          MYSQL_PASSWORD: testpass
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping --silent" 
+          --health-interval 10s 
+          --health-timeout 5s 
+          --health-retries 3
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Cache Maven packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-maven-
+
+      - name: Build and run tests
+        run: mvn clean verify --batch-mode
+
+      - name: Package the application
+        run: mvn package --batch-mode
+
+      - name: Start Spring Boot application and check health
+        env:
+          # Configure Spring Boot to connect to the MySQL service
+          SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:3306/testdb
+          SPRING_DATASOURCE_USERNAME: testuser
+          SPRING_DATASOURCE_PASSWORD: testpass
+        run: |
+          # Launch the Spring Boot jar in the background.
+          nohup java -jar target/*.jar > output.log 2>&1 &
+          # Allow time for the application (and the DB) to start (adjust as needed)
+          sleep 30
+          # Check if the application is running (update URL if needed)
+          curl -v http://localhost:8080/actuator/health
