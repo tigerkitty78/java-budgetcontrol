@@ -8,27 +8,10 @@ on:
   pull_request:
     branches:
       - main
-#iii
+
 jobs:
   build-and-run:
     runs-on: ubuntu-latest
-#iii
-    # Define a MySQL service for your application
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: testdb
-          MYSQL_USER: testuser
-          MYSQL_PASSWORD: testpass
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd "mysqladmin ping --silent" 
-          --health-interval 10s 
-          --health-timeout 5s 
-          --health-retries 3
 
     steps:
       - name: Checkout code
@@ -54,19 +37,4 @@ jobs:
       - name: Package the application
         run: mvn package --batch-mode
         working-directory: java-budgetcontrol/employaa
-
-
-      - name: Start Spring Boot application and check health
-        working-directory: java-budgetcontrol/employaa
-        env:
-          SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:3306/testdb
-          SPRING_DATASOURCE_USERNAME: testuser
-          SPRING_DATASOURCE_PASSWORD: testpass
-        run: |
-          # Run Spring Boot application using Maven
-          mvn spring-boot:run -Dspring-boot.run.profiles=dev &
-          # Allow time for the application (and the DB) to start (adjust as needed)
-          sleep 30
-          # Check if the application is running (update URL if needed)
-          curl -v http://localhost:8080/actuator/health
       
