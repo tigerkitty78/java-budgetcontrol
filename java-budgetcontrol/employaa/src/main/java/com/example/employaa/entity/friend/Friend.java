@@ -39,6 +39,9 @@ public class Friend {
 
     // Getters and Setters
     public Long getId() { return id; }
+    public void setId(Long id) {
+        this.id = id;
+    }
     public User getRequester() { return requester; }
     public User getRecipient() { return recipient; }
     public FriendStatus getStatus() { return status; }
