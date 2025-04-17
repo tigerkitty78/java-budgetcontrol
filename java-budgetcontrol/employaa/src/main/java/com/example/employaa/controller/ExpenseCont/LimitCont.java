@@ -18,23 +18,16 @@ public class LimitCont {
     private final LimitService limitService;
 
     @PostMapping("/limit")
-    public Limits postLimits(@RequestBody Limits limits){
-        return limitService.postLimits(limits);
-
+    public ResponseEntity<Limits> postLimits(@RequestBody Limits limits,
+                                             @RequestHeader("Authorization") String token) {
+        Limits savedLimit = limitService.postLimits(limits, token);
+        return ResponseEntity.ok(savedLimit);
     }
+
     @GetMapping("/limits")
-    public List<Limits> getAllLimits(){ return limitService.getAllLimits();}
-
-    @PostMapping("/calculate")
-    public ResponseEntity<String> calculateAndStoreTotals(ExpenseTotals totals) {
-        try {
-            limitService.calculateAndStoreTotals(totals);
-            return ResponseEntity.ok("Totals calculated and stored successfully.");
-
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error calculating and storing totals: " + e.getMessage());
-        }
+    public ResponseEntity<List<Limits>> getAllLimits(@RequestHeader("Authorization") String token) {
+        List<Limits> limitsList = limitService.getAllLimits(token);
+        return ResponseEntity.ok(limitsList);
     }
-
 }
+
