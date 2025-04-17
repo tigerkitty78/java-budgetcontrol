@@ -7,6 +7,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -46,8 +47,9 @@ public class Expenses {
     //private Group group;
 
 
-    @OneToMany(mappedBy = "amount")  // Mapping to the `expense` field in Limits
-    private Set<Limits> limits;
+    @OneToMany(mappedBy = "expense")
+    private List<Limits> limits;
+
 
     @Column(name = "date")
     private LocalDate date;
