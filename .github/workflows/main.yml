@@ -34,27 +34,31 @@ jobs:
         run: mvn clean install --batch-mode
         working-directory: java-budgetcontrol/employaa
 
-      - name: Run InvestmentContTest
+      - name: Run InvestmentContTests
         run: mvn -Dtest=InvestmentContTest test --batch-mode
         working-directory: java-budgetcontrol/employaa
 
-      - name: Run FriendContTest
+      - name: Run FriendContTests
         run: mvn -Dtest=FriendContTest test --batch-mode
         working-directory: java-budgetcontrol/employaa
 
-      - name: Run InvestmentGoalContTest
+      - name: Run InvestmentGoalContTests
         run: mvn -Dtest=InvestmentGoalContTest test --batch-mode
         working-directory: java-budgetcontrol/employaa
 
-      - name: Run ExpensesContTest
+      - name: Run ExpensesContTests
         run: mvn -Dtest=ExpensesContTest test --batch-mode
         working-directory: java-budgetcontrol/employaa
 
-
+      - name: Run IncomeContTests
+        run: mvn -Dtest=IncomeContTest test --batch-mode
+        working-directory: java-budgetcontrol/employaa
 
       - name: Package the application
         run: mvn package --batch-mode
         working-directory: java-budgetcontrol/employaa
+
+
 
 
       
