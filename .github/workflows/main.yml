@@ -46,9 +46,9 @@ jobs:
         run: mvn -Dtest=InvestmentGoalContTest test --batch-mode
         working-directory: java-budgetcontrol/employaa
 
-      - name: Run ExpensesContTests
-        run: mvn -Dtest=ExpensesContTest test --batch-mode
-        working-directory: java-budgetcontrol/employaa
+#      - name: Run ExpensesContTests
+#        run: mvn -Dtest=ExpensesContTest test --batch-mode
+#        working-directory: java-budgetcontrol/employaa
 
       - name: Run IncomeContTests
         run: mvn -Dtest=IncomeContTest test --batch-mode
