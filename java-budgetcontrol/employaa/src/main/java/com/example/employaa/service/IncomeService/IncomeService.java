@@ -4,7 +4,11 @@ import com.example.employaa.entity.expenses.Expenses;
 import com.example.employaa.entity.income.Income;
 import com.example.employaa.entity.user.User;
 import com.example.employaa.repository.IncomeRepo.IncomeRepo;
+import com.example.employaa.service.UserService.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -16,57 +20,62 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class IncomeService {
     private final IncomeRepo incomeRepository;
+    private final UserService userService;
 
-    //public IncomeService(IncomeRepo incomeRepository) {
-      //  this.incomeRepository = incomeRepository;
-    //}
+    // Get authenticated user
+    private User getAuthenticatedUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        return userService.findByUsername(username);
 
-    // Save new income
+    }
+
+    // Save new income for authenticated user
     public Income postIncome(Income income) {
+        User user = getAuthenticatedUser();
+        income.setUser(user);
         return incomeRepository.save(income);
     }
 
-    // Retrieve all incomes
-    public List<Income> getAllIncomes() {
-        return incomeRepository.findAll();
-    }
-
-    // Get income by ID
-    public Optional<Income> getIncomeById(Long id) {
-        return incomeRepository.findById(id);
-    }
-
-    // Delete income by ID
-    //public void deleteIncome(Long id) {
-        //incomeRepository.deleteById(id);
-    //}
-    public List<Income> getIncomeByUser(User user) {
+    // Get incomes for authenticated user
+    public List<Income> getIncomeForCurrentUser() {
+        User user = getAuthenticatedUser();
         return incomeRepository.findByUser(user);
     }
 
-
-    // Find incomes by date range (optional)
-    public List<Income> getIncomesByDateRange(LocalDate start, LocalDate end) {
-        return incomeRepository.findByInDateBetween(start, end);
+    // Get income by ID (for authenticated user)
+    public Optional<Income> getIncomeById(Long id) {
+        User user = getAuthenticatedUser();
+        return incomeRepository.findByIdAndUser(id, user);
     }
 
-    // Update income by ID
+    // Update income (with ownership check)
     public Income updateIncome(Long id, Income updatedIncome) {
-        return incomeRepository.findById(id).map(income -> {
-            income.setIn_amount(updatedIncome.getIn_amount());
-            income.setIn_description(updatedIncome.getIn_description());
-            income.setIn_category(updatedIncome.getIn_category());
-           // income.setIn_source(updatedIncome.getIn_source()); // Fixed this
-            income.setInDate(updatedIncome.getInDate());
-            return incomeRepository.save(income);
-        }).orElseThrow(() -> new RuntimeException("Income not found with ID: " + id));
+        User user = getAuthenticatedUser();
+        return incomeRepository.findByIdAndUser(id, user)
+                .map(existingIncome -> {
+                    existingIncome.setIn_amount(updatedIncome.getIn_amount());
+                    existingIncome.setIn_description(updatedIncome.getIn_description());
+                    existingIncome.setIn_category(updatedIncome.getIn_category());
+                    existingIncome.setInDate(updatedIncome.getInDate());
+                    return incomeRepository.save(existingIncome);
+                })
+                .orElseThrow(() -> new RuntimeException("Income not found or unauthorized"));
     }
 
-    // Delete income by ID
+    // Delete income (with ownership check)
     public void deleteIncome(Long id) {
-        if (!incomeRepository.existsById(id)) {
-            throw new RuntimeException("Income not found with ID: " + id);
-        }
-        incomeRepository.deleteById(id);
+        User user = getAuthenticatedUser();
+        incomeRepository.findByIdAndUser(id, user)
+                .ifPresentOrElse(
+                        incomeRepository::delete,
+                        () -> { throw new RuntimeException("Income not found or unauthorized"); }
+                );
+    }
+
+    // Optional: Date range filter for authenticated user
+    public List<Income> getIncomesByDateRange(LocalDate start, LocalDate end) {
+        User user = getAuthenticatedUser();
+        return incomeRepository.findByUserAndInDateBetween(user, start, end);
     }
 }

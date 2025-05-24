@@ -19,15 +19,22 @@ public class UserDTO {
     private String email;
     @NotEmpty(message = "Password should not be empty")
     private String password;
-
-    public UserDTO(String email, String fullname, String password, Long id, String username) {
+    private boolean admin;
+    public UserDTO(String email, String fullname, String password, Long id, String username, boolean admin) {
         this.email = email;
         this.fullname = fullname;
         this.password = password;
         this.id = id;
         this.username = username;
+        this.admin = admin;
+    }
+    public boolean isAdmin() {
+        return admin;
     }
 
+    public void setAdmin(boolean admin) {
+        this.admin = admin;
+    }
     public @NotEmpty(message = "Email should not be empty") @Email String getEmail() {
         return email;
     }

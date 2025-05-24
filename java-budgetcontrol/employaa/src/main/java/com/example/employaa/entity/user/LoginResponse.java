@@ -4,7 +4,7 @@ public class LoginResponse {
     String message;
     Boolean status;
 
-    public LoginResponse(String loginSuccessful, Long id, String email) {
+    public LoginResponse(String loginSuccessful, Long id, String email, boolean admin) {
     }
 
     @Override

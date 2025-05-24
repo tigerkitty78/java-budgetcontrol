@@ -1,22 +1,43 @@
 package com.example.employaa.JWT;
 import io.jsonwebtoken.*;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 @Component
 public class JWT_util {
-    private String secretKey = "CkRQXRi7Cryu5O2Y1wqZrCV+DZuCCRjcaoVnMZDst0M=\n"; // Change this to a stronger secret key
+//    private String secretKey = "CkRQXRi7Cryu5O2Y1wqZrCV+DZuCCRjcaoVnMZDst0M=\n"; // Change this to a stronger secret key
+//
+//    private final long expirationMs = 86400000; // 24 hours
 
-    public String generateToken(String username) {
+    private final String secretString = "CkRQXRi7Cryu5O2Y1wqZrCV+DZuCCRjcaoVnMZDst0M="; // Removed \n at end
+    private final SecretKey secretKey = new SecretKeySpec(secretString.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+    private final long expirationMs = 86400000;
+
+    public String generateToken(UserDetails userDetails) {
         return Jwts.builder()
-                .setSubject(username)
+                .setSubject(userDetails.getUsername())
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60)) // 1 hour
-                .signWith(SignatureAlgorithm.HS256, secretKey)
+                .setExpiration(new Date(System.currentTimeMillis() + expirationMs))
+                .signWith(secretKey)
                 .compact();
     }
 
+    public boolean validateToken(String token) {
+        try {
+            Jwts.parserBuilder()
+                    .setSigningKey(secretKey)
+                    .build()
+                    .parseClaimsJws(token);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
     public String extractUsername(String token) {
         return Jwts.parser()
                 .setSigningKey(secretKey)
@@ -25,25 +46,13 @@ public class JWT_util {
                 .getSubject();
     }
 
-    public boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
-    }
-
-    private Date extractExpiration(String token) {
-        return Jwts.parser()
-                .setSigningKey(secretKey)
-                .parseClaimsJws(token)
-                .getBody()
-                .getExpiration();
-    }
-
-    public boolean validateToken(String token, String username) {
-        return (username.equals(extractUsername(token)) && !isTokenExpired(token));
-    }
-
-    public boolean vvalidateToken(String token) {
-        String extractedUsername = extractUsername(token); // Extract username from token
-        return (extractedUsername != null && !isTokenExpired(token)); // Check if valid
-    }
-
+//    public boolean validateToken(String token) {
+//        try {
+//            Jwts.parser().setSigningKey(secretKey).parseClaimsJws(token);
+//            return true;
+//        } catch (Exception e) {
+//            // Handle specific exceptions
+//            return false;
+//        }
+//    }
 }

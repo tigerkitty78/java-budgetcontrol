@@ -10,66 +10,79 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
+
 public class InvestmentService {
 
     private final InvestmentRepo investmentRepository;
     private final UserService userService;
     private final JWT_util jwtUtil;
 
-    // Create a new Investment record
-    public Investment createInvestment(Investment investment, String token) {
+    private User getAuthenticatedUser(String token) {
         String username = jwtUtil.extractUsername(token.replace("Bearer ", ""));
-        User loggedInUser = userService.findByUsername(username);
-        investment.setUser(loggedInUser);
+        return userService.findByUsername(username);
+
+    }
+
+    public Investment createInvestment(Investment investment, String token) {
+        validateInvestment(investment);
+        User user = getAuthenticatedUser(token);
+        investment.setUser(user);
         return investmentRepository.save(investment);
     }
 
-    // Get all Investments for the logged-in user
     public List<Investment> getAllInvestments(String token) {
-        String username = jwtUtil.extractUsername(token.replace("Bearer ", ""));
-        User loggedInUser = userService.findByUsername(username);
-        return investmentRepository.findByUser(loggedInUser);
+        User user = getAuthenticatedUser(token);
+        return investmentRepository.findByUser(user);
     }
 
-    // Get a specific Investment by ID (only if it belongs to the logged-in user)
     public Optional<Investment> getInvestmentById(Long id, String token) {
-        String username = jwtUtil.extractUsername(token.replace("Bearer ", ""));
-        User loggedInUser = userService.findByUsername(username);
+        User user = getAuthenticatedUser(token);
         return investmentRepository.findById(id)
-                .filter(investment -> investment.getUser().equals(loggedInUser));
+                .filter(investment -> investment.getUser().equals(user));
     }
 
-    // Update an Investment
     public Investment updateInvestment(Long id, Investment updatedInvestment, String token) {
-        String username = jwtUtil.extractUsername(token.replace("Bearer ", ""));
-        User loggedInUser = userService.findByUsername(username);
+        validateInvestment(updatedInvestment);
+        User user = getAuthenticatedUser(token);
 
         return investmentRepository.findById(id)
-                .filter(investment -> investment.getUser().equals(loggedInUser))
-                .map(existingInvestment -> {
-                    existingInvestment.setAmount(updatedInvestment.getAmount());
-                    existingInvestment.setInterestRate(updatedInvestment.getInterestRate());
-                    existingInvestment.setDuration(updatedInvestment.getDuration());
-                    existingInvestment.setMaturityDate(updatedInvestment.getMaturityDate());
-                    return investmentRepository.save(existingInvestment);
+                .filter(investment -> investment.getUser().equals(user))
+                .map(existing -> {
+                    existing.setAmount(updatedInvestment.getAmount());
+                    existing.setInterestRate(updatedInvestment.getInterestRate());
+                    existing.setDuration(updatedInvestment.getDuration());
+                    existing.setMaturityDate(updatedInvestment.getMaturityDate());
+                    return investmentRepository.save(existing);
                 })
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Unauthorized"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Investment not found"));
     }
 
-    // Delete an Investment
     public void deleteInvestment(Long id, String token) {
-        String username = jwtUtil.extractUsername(token.replace("Bearer ", ""));
-        User loggedInUser = userService.findByUsername(username);
-
+        User user = getAuthenticatedUser(token);
         Investment investment = investmentRepository.findById(id)
-                .filter(i -> i.getUser().equals(loggedInUser))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Unauthorized"));
-
+                .filter(i -> i.getUser().equals(user))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         investmentRepository.delete(investment);
+    }
+
+    private void validateInvestment(Investment investment) {
+        if (investment.getAmount() == null || investment.getAmount().doubleValue() <= 0) {
+            throw new IllegalArgumentException("Invalid investment amount");
+        }
+//        if (investment.getInterestRate() == null || investment.getInterestRate() <= 0) {
+//            throw new IllegalArgumentException("Invalid interest rate");
+//        }
+        if (investment.getDuration() == null || investment.getDuration() <= 0) {
+            throw new IllegalArgumentException("Invalid duration");
+        }
+        if (investment.getMaturityDate() == null || investment.getMaturityDate().isBefore(LocalDate.now())) {
+            throw new IllegalArgumentException("Invalid maturity date");
+        }
     }
 }

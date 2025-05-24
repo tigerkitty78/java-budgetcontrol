@@ -1,10 +1,14 @@
 package com.example.employaa.JWT;
 
 import com.example.employaa.entity.user.User;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 import com.example.employaa.service.UserService.UserService;
 import com.example.employaa.JWT.JWT_util;
@@ -20,39 +24,40 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-//import jakarta.servlet.http.HttpServletRequest;
-//import jakarta.servlet.http.HttpServletResponse;
+import java.util.Arrays;
+import java.util.List;
 
-
-@WebFilter
-@Component
+@RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
-
-    @Autowired
-    private JWT_util jwtUtil;
-
-    @Autowired
-    @Lazy
-    private UserService userService;
-
+    private final JWT_util jwtUtil;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-            throws ServletException, IOException {
-        String token = request.getHeader("Authorization");
-
-        if (token != null && token.startsWith("Bearer ")) {
-            token = token.substring(7);
-            String username = jwtUtil.extractUsername(token);
-
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UserDetails user = userService.loadUserByUsername(username);
-
-                if (jwtUtil.validateToken(token, user.getUsername())) {
-                    // Set the user authentication in the SecurityContext
-                }
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain filterChain) throws ServletException, IOException { String requestURI = request.getRequestURI();
+        List<String> publicEndpoints = Arrays.asList(
+                "/auth/signup", "/auth/login", "/api/nearby-store","/predict" // Add all public endpoints
+        );
+        if (publicEndpoints.contains(requestURI)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+        try {
+            String token = parseJwt(request);
+            if (token != null && jwtUtil.validateToken(token)) {
+                // Token validation logic
             }
+        } catch (Exception e) {
+            logger.error("Cannot set authentication", e);
         }
         filterChain.doFilter(request, response);
+    }
+
+    private String parseJwt(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        if (StringUtils.hasText(header) && header.startsWith("Bearer ")) {
+            return header.substring(7);
+        }
+        return null;
     }
 }

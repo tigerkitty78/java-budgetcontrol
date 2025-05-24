@@ -6,6 +6,8 @@ import com.example.employaa.entity.investments.Investment;
 import com.example.employaa.entity.user.User;
 import com.example.employaa.service.InvestmentService.InvestmentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.security.oauth2.client.servlet.OAuth2ClientAutoConfiguration;
@@ -14,9 +16,12 @@ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfi
 import org.springframework.boot.autoconfigure.security.servlet.SecurityFilterAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan.Filter;
 import org.springframework.context.annotation.FilterType;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -29,29 +34,16 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(
-        value = InvestmentCont.class,
-        excludeAutoConfiguration = {
-                SecurityAutoConfiguration.class,
-                SecurityFilterAutoConfiguration.class,
-                OAuth2ResourceServerAutoConfiguration.class,
-                OAuth2ClientAutoConfiguration.class
-        },
-        excludeFilters = @Filter(
-                type = FilterType.ASSIGNABLE_TYPE,
-                classes = {
-                        SecurityConfig.class
-                }
-        )
-)
+@WebMvcTest(InvestmentCont.class)
 @AutoConfigureMockMvc(addFilters = false)
+@Import(InvestmentContTest.JacksonConfiguration.class)
 public class InvestmentContTest {
 
     @Autowired
@@ -60,58 +52,73 @@ public class InvestmentContTest {
     @MockBean
     private InvestmentService investmentService;
 
-    @MockBean(name = "jwtDecoder")
-    private JwtDecoder jwtDecoder;
-
-    @MockBean
-    private UserDetailsService userDetailsService;
-
-    @MockBean
-    private JWT_util jwtUtil;
-
     @Autowired
     private ObjectMapper objectMapper;
 
     private final String validToken = "Bearer dummy-token";
 
-    private Investment createInvestment(Long id) {
-        User user = new User();
-        user.setUsername("testuser");
-
+    private Investment createValidRequest() {
         return Investment.builder()
-                .id(id)
                 .investmentName("Retirement Fund")
                 .amount(new BigDecimal("100000.00"))
                 .interestRate(new BigDecimal("5.25"))
                 .duration(60)
                 .startDate(LocalDate.now())
                 .maturityDate(LocalDate.now().plusYears(5))
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .user(user)
                 .build();
+    }
+
+    private Investment createResponse(Long id) {
+        User user = new User();
+        user.setUsername("testuser");
+
+        Investment investment = createValidRequest();
+        investment.setId(id);
+        investment.setUser(user);
+        investment.setCreatedAt(LocalDateTime.now());
+        investment.setUpdatedAt(LocalDateTime.now());
+        return investment;
     }
 
     @Test
     void createInvestment_Success() throws Exception {
-        Investment mockInvestment = createInvestment(1L);
+        Investment response = createResponse(1L);
 
         when(investmentService.createInvestment(any(Investment.class), anyString()))
-                .thenReturn(mockInvestment);
+                .thenReturn(response);
 
         mockMvc.perform(post("/api/investments")
                         .header("Authorization", validToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(mockInvestment)))
+                        .content(objectMapper.writeValueAsString(createValidRequest())))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1L))
                 .andExpect(jsonPath("$.investmentName").value("Retirement Fund"));
     }
 
     @Test
+    void updateInvestment_Success() throws Exception {
+        Investment request = createValidRequest();
+        Investment response = createResponse(1L);
+        response.setAmount(new BigDecimal("150000.00"));
+
+        when(investmentService.updateInvestment(eq(1L), any(Investment.class), anyString()))
+                .thenReturn(response);
+
+        mockMvc.perform(put("/api/investments/1")
+                        .header("Authorization", validToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.amount").value(150000.00));
+    }
+
+    @Test
     void getAllInvestments_Success() throws Exception {
-        Investment mockInvestment = createInvestment(1L);
-        List<Investment> investments = Collections.singletonList(mockInvestment);
+        List<Investment> investments = List.of(
+                createResponse(1L),
+                createResponse(2L)
+        );
 
         when(investmentService.getAllInvestments(anyString()))
                 .thenReturn(investments);
@@ -119,80 +126,59 @@ public class InvestmentContTest {
         mockMvc.perform(get("/api/investments")
                         .header("Authorization", validToken))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
                 .andExpect(jsonPath("$[0].id").value(1L))
-                .andExpect(jsonPath("$[0].amount").value(100000.00));
+                .andExpect(jsonPath("$[1].amount").value(100000.00));
     }
 
     @Test
     void getInvestmentById_Success() throws Exception {
-        Investment mockInvestment = createInvestment(1L);
+        Investment response = createResponse(1L);
 
         when(investmentService.getInvestmentById(anyLong(), anyString()))
-                .thenReturn(Optional.of(mockInvestment));
+                .thenReturn(Optional.of(response));
 
         mockMvc.perform(get("/api/investments/1")
                         .header("Authorization", validToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.duration").value(60));
-   }
+    }
 
     @Test
-   void getInvestmentById_NotFound() throws Exception {
+    void getInvestmentById_NotFound() throws Exception {
         when(investmentService.getInvestmentById(anyLong(), anyString()))
                 .thenReturn(Optional.empty());
 
         mockMvc.perform(get("/api/investments/999")
-                       .header("Authorization", validToken))
-              .andExpect(status().isNotFound());
-    }
-
-    @Test
-    void updateInvestment_Success() throws Exception {
-        Investment updatedInvestment = createInvestment(1L);
-        updatedInvestment.setAmount(new BigDecimal("150000.00"));
-
-        when(investmentService.updateInvestment(anyLong(), any(Investment.class), anyString()))
-                .thenReturn(updatedInvestment);
-
-        mockMvc.perform(put("/api/investments/1")
-                        .header("Authorization", validToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(updatedInvestment)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.amount").value(150000.00));
+                        .header("Authorization", validToken))
+                .andExpect(status().isNotFound());
     }
 
     @Test
     void deleteInvestment_Success() throws Exception {
+        doNothing().when(investmentService).deleteInvestment(anyLong(), anyString());
+
         mockMvc.perform(delete("/api/investments/1")
                         .header("Authorization", validToken))
                 .andExpect(status().isNoContent());
     }
 
     @Test
-   void createInvestment_MissingRequiredFields() throws Exception {
-        Investment invalidInvestment = new Investment();
+    void createInvestment_MissingRequiredFields() throws Exception {
         mockMvc.perform(post("/api/investments")
                         .header("Authorization", validToken)
-                       .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(invalidInvestment)))
-               .andExpect(status().isBadRequest());
-  }
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
 
-//    @Test
-//    void updateInvestment_NotFound() throws Exception {
-//        Investment updatedInvestment = createInvestment(1L);
-//
-//        when(investmentService.updateInvestment(anyLong(), any(Investment.class), anyString()))
-//                .thenThrow(new RuntimeException("Investment not found"));
-//
-//        mockMvc.perform(put("/api/investments/999")
-//                        .header("Authorization", validToken)
-//                        .contentType(MediaType.APPLICATION_JSON)
-//                        .content(objectMapper.writeValueAsString(updatedInvestment)))
-//                .andExpect(status().isNotFound());
-//    }
+    @TestConfiguration
+    static class JacksonConfiguration {
+        @Bean
+        public ObjectMapper objectMapper() {
+            return new ObjectMapper()
+                    .registerModule(new JavaTimeModule())
+                    .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        }
+    }
 }
-
-
-

@@ -25,6 +25,7 @@ public class WebConfig {
                 registry.addMapping("/api/categories");
                 registry.addMapping("/api/user");
                 registry.addMapping("/api/**")
+
                        // registry.addMapping("api/group/create")
 
                         .allowedOrigins("http://localhost:3000","http://192.168.8.175:3000")

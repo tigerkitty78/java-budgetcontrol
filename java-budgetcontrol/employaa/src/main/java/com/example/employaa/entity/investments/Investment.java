@@ -19,11 +19,10 @@ public class Investment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-
-    @NotNull(message = "Investment name is required")
     private Long id;
 
-   // @Column(nullable = false)
+
+    // @Column(nullable = false)
   //  private Long userId; // Reference to User entity
 
     @Column(nullable = false)

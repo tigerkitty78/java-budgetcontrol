@@ -45,9 +45,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         excludeAutoConfiguration = {
                 SecurityAutoConfiguration.class,
                 UserDetailsServiceAutoConfiguration.class,
-                SecurityFilterAutoConfiguration.class,
-//                OAuth2ResourceServerAutoConfiguration.class,
-//                OAuth2ClientAutoConfiguration.class
+                SecurityFilterAutoConfiguration.class
         },
         excludeFilters = @Filter(
                 type = FilterType.ASSIGNABLE_TYPE,
@@ -66,55 +64,42 @@ public class IncomeContTest {
     @MockBean
     private IncomeService incomeService;
 
-    @MockBean
-    private IncomeRepo incomeRepo;
-
-    @MockBean
-    private UserService userService;
-
-    @MockBean
-    private JWT_util jwtUtil;
-
     @Autowired
     private ObjectMapper objectMapper;
 
-    private final String validToken = "Bearer dummy-token";
-    private final String username = "testUser";
-
-    private User createUser() {
-        User user = new User();
-        user.setUsername(username);
-        return user;
-    }
-
-    private Income createIncome(Long id, User user) {
+    private Income createIncomeRequest() {
         Income income = new Income();
-        income.setId(id);
         income.setIn_amount(5000);
         income.setIn_description("Salary");
         income.setIn_category("Employment");
         income.setInDate(LocalDate.now());
+        return income;
+    }
+
+    private Income createIncomeResponse(Long id, User user) {
+        Income income = createIncomeRequest();
+        income.setId(id);
         income.setUser(user);
         return income;
     }
 
-    @BeforeEach
-    void setUp() {
-        when(jwtUtil.extractUsername(anyString())).thenReturn(username);
-        when(userService.findByUsername(username)).thenReturn(createUser());
+    private User createUser() {
+        User user = new User();
+        user.setUsername("testUser");
+        return user;
     }
 
     @Test
     void postIncome_Success() throws Exception {
-        Income income = createIncome(1L, createUser());
+        Income incomeRequest = createIncomeRequest();
+        Income incomeResponse = createIncomeResponse(1L, createUser());
 
-        when(incomeService.postIncome(any(Income.class))).thenReturn(income);
+        when(incomeService.postIncome(any(Income.class))).thenReturn(incomeResponse);
 
         mockMvc.perform(post("/api/addincome")
-                        .header("Authorization", validToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(income)))
-                .andExpect(status().isOk())
+                        .content(objectMapper.writeValueAsString(incomeRequest)))
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1L))
                 .andExpect(jsonPath("$.in_description").value("Salary"));
     }
@@ -122,14 +107,13 @@ public class IncomeContTest {
     @Test
     void getAllIncomes_Success() throws Exception {
         List<Income> incomes = List.of(
-                createIncome(1L, createUser()),
-                createIncome(2L, createUser())
+                createIncomeResponse(1L, createUser()),
+                createIncomeResponse(2L, createUser())
         );
 
-        when(incomeService.getIncomeByUser(any(User.class))).thenReturn(incomes);
+        when(incomeService.getIncomeForCurrentUser()).thenReturn(incomes);
 
-        mockMvc.perform(get("/api/showincome")
-                        .header("Authorization", validToken))
+        mockMvc.perform(get("/api/showincome"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)))
                 .andExpect(jsonPath("$[0].id").value(1L))
@@ -138,7 +122,7 @@ public class IncomeContTest {
 
     @Test
     void getIncomeById_Success() throws Exception {
-        Income income = createIncome(1L, createUser());
+        Income income = createIncomeResponse(1L, createUser());
 
         when(incomeService.getIncomeById(1L)).thenReturn(Optional.of(income));
 
@@ -150,16 +134,20 @@ public class IncomeContTest {
 
     @Test
     void updateIncome_Success() throws Exception {
-        Income updatedIncome = createIncome(1L, createUser());
-        updatedIncome.setIn_description("Updated salary");
+        Income incomeRequest = createIncomeRequest();
+        incomeRequest.setIn_description("Updated salary");
 
-        when(incomeService.updateIncome(anyLong(), any(Income.class))).thenReturn(updatedIncome);
+        Income incomeResponse = createIncomeResponse(1L, createUser());
+        incomeResponse.setIn_description("Updated salary");
+
+        when(incomeService.updateIncome(eq(1L), any(Income.class))).thenReturn(incomeResponse);
 
         mockMvc.perform(put("/api/income/1")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(updatedIncome)))
+                        .content(objectMapper.writeValueAsString(incomeRequest)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.in_description").value("Updated salary"));
+                .andExpect(jsonPath("$.in_description").value("Updated salary"))
+                .andExpect(jsonPath("$.id").value(1L));
     }
 
     @Test
@@ -170,6 +158,7 @@ public class IncomeContTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string("Income with ID 1 deleted successfully."));
     }
+}
 
 //    @Test
 //    void postIncome_UserNotFound() throws Exception {
@@ -189,4 +178,3 @@ public class IncomeContTest {
 //        mockMvc.perform(get("/api/income/1"))
 //                .andExpect(status().isNotFound());
 //    }
-}

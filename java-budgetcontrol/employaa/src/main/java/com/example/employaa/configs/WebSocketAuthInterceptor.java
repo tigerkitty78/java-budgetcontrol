@@ -1,13 +1,25 @@
 package com.example.employaa.configs;
 
 import com.example.employaa.JWT.JWT_util;
+import com.example.employaa.service.UserService.UserService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
+import org.springframework.messaging.simp.stomp.StompCommand;
+import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
+import org.springframework.messaging.support.ChannelInterceptor;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.HandshakeInterceptor;
+
+import java.security.Principal;
 import java.util.logging.Logger;
 
 import java.net.URI;
@@ -16,13 +28,17 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
+//import static sun.print.DialogOwnerAccessor.accessor;
+//
 @Component
 public class WebSocketAuthInterceptor implements HandshakeInterceptor {
 
-    private final JWT_util jwtUtil; // Your JWT utility class
+    private final JWT_util jwtUtil;
+    private final UserService userService; // Your JWT utility class
     private final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(WebSocketAuthInterceptor.class.getName());
-    public WebSocketAuthInterceptor(JWT_util jwtUtil) {
+    public WebSocketAuthInterceptor(JWT_util jwtUtil, UserService userService) {
         this.jwtUtil = jwtUtil;
+        this.userService=userService;
     }
 
     @Override
@@ -69,15 +85,21 @@ public class WebSocketAuthInterceptor implements HandshakeInterceptor {
         // 3. Validate token if it exists
         if (token != null) {
             try {
-                if (!jwtUtil.vvalidateToken(token)) {
+                if (!jwtUtil.validateToken(token)) {
                     logger.severe("❌ Token validation failed");
                     return false; // Reject connection if token is invalid or expired
                 }
 
                 String username = jwtUtil.extractUsername(token);
                 logger.info("🔓 Authenticated user: " + username);
-                attributes.put("username", username); // Store username in WebSocket session
+                UserDetails userDetails = userService.loadUserByUsername(username); // ✅ your UserService implements UserDetailsService
 
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+
+                attributes.put("username", username);
+                attributes.put("user", authentication);
                 return true; // Allow the connection
 
             } catch (Exception e) {
@@ -96,4 +118,11 @@ public class WebSocketAuthInterceptor implements HandshakeInterceptor {
                                WebSocketHandler wsHandler, Exception exception) {
         // No action needed after handshake
     }
+ //In your WebSocket interceptor
+//accessor.setUser(() -> username); // After JWT validation
+
+
+
+
+
 }

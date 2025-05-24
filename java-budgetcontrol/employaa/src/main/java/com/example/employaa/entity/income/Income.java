@@ -24,9 +24,6 @@ public class Income {
     @Column(name = "category")
     private String in_category;
 
-    // @OneToMany(mappedBy = "amount")
-    //private Limits limits;
-
     @ManyToOne
     @JoinColumn(name = "user_id", referencedColumnName = "id") // Foreign key to User
     private User user;

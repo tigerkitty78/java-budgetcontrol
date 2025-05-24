@@ -2,9 +2,13 @@ package com.example.employaa.entity.user;
 
 
 
+import com.example.employaa.entity.friend.Friend;
+import com.example.employaa.entity.paymodel.WalletModel;
 import com.example.employaa.entity.splitexpenses.Group;
 import com.example.employaa.entity.splitexpenses.GroupUsers;
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.Getter;
@@ -12,6 +16,7 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.ArrayList;
@@ -34,17 +39,28 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private String fullName;
 
+    private  String FirstName;
+    private  String LastName;
+
     @Column(nullable = false, unique = true)
     private String username;
-
+/////////////////////////////////
+@Column(nullable = false)
+private boolean admin = false;
+    ///////////////////////////////////////////////
     @Column(unique = true, length = 100, nullable = false)
     private String email;
 
     @Column(nullable = false)
     private String password;
 
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
+    private WalletModel wallet;
+
+
     @CreationTimestamp
     @Column(updatable = false, name = "created_at")
+
     private Date createdAt;
 
     @UpdateTimestamp
@@ -53,18 +69,38 @@ public class User implements UserDetails {
 
     /////////////////login new
 
-    @ManyToOne
+    @ManyToMany(mappedBy = "users")
     @JsonBackReference
-    @JoinColumn(name = "group_id") // Foreign key in User table
-    private Group group;
-///////////////////
+    private List<Group> groups;
 
+    private String stripeCustomerId;
+
+    ////////////////////////friend
+    // Add these relationships
+    @OneToMany(mappedBy = "requester", cascade = CascadeType.ALL)
+    @JsonIgnore
+    private List<Friend> sentRequests = new ArrayList<>();
+
+    @OneToMany(mappedBy = "recipient", cascade = CascadeType.ALL)
+    @JsonIgnore
+    private List<Friend> receivedRequests = new ArrayList<>();
+
+    ///////////////////
+private String stripeAccountId;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(); // No roles or authorities defined
+        return List.of(new SimpleGrantedAuthority("ROLE_USER")); // No roles or authorities defined
     }
 
+
+    public boolean isAdmin() {
+        return admin;
+    }
+
+    public void setAdmin(boolean admin) {
+        this.admin = admin;
+    }
     @Override
     public boolean isAccountNonExpired() {
         return true;
@@ -113,6 +149,12 @@ public class User implements UserDetails {
         this.password = password;
         this.updatedAt = updatedAt;
         this.username = username;
+    }
+    private String walletAddress;
+    // When saving a wallet:
+    public void setWallet(WalletModel wallet) {
+        this.wallet = wallet;
+        wallet.setUser(this); // Ensure bidirectional link
     }
 
 

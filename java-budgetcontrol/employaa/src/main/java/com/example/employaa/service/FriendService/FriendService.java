@@ -8,6 +8,9 @@ import com.example.employaa.repository.FriendRepo.FriendRepo;
 import com.example.employaa.service.UserService.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -19,44 +22,30 @@ import java.util.Optional;
 public class FriendService {
     private final FriendRepo friendRepo;
     private final UserService userService;
-    private final JWT_util jwtUtil;
 
-    // Get authenticated user from token
-    public User getAuthenticatedUser(String token) {
-        String username = jwtUtil.extractUsername(token.replace("Bearer ", ""));
-        User loggedInUser = userService.findByUsername(username);
-        if (loggedInUser == null) {
-            throw new RuntimeException("User not found");
-        }
-        return loggedInUser;
+    public User getAuthenticatedUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        return userService.findByUsername(username);
+
     }
 
-    // Send a friend request
-    public Friend sendFriendRequest(String token, String recipientUsername) {
-        User requester = getAuthenticatedUser(token);
+    public Friend sendFriendRequest(String recipientUsername) {
+        User requester = getAuthenticatedUser();
         User recipient = userService.findByUsername(recipientUsername);
 
-        if (recipient == null) {
-            throw new RuntimeException("Recipient not found");
-        }
-        if (requester.equals(recipient)) {
-            throw new RuntimeException("You cannot send a friend request to yourself.");
-        }
+        if (recipient == null) throw new RuntimeException("Recipient not found");
+        if (requester.equals(recipient)) throw new RuntimeException("You cannot send a friend request to yourself");
 
-        // Check if a request already exists
         Optional<Friend> existingRequest = friendRepo.findByRequesterAndRecipient(requester, recipient);
-        if (existingRequest.isPresent()) {
-            throw new RuntimeException("Friend request already sent.");
-        }
+        if (existingRequest.isPresent()) throw new RuntimeException("Friend request already sent");
 
-        // Create and save new friend request
         Friend friendship = new Friend(requester, recipient, FriendStatus.PENDING);
         return friendRepo.save(friendship);
     }
 
-    // Accept a friend request
-    public Friend acceptFriendRequest(String token, Long requestId) {
-        User recipient = getAuthenticatedUser(token);
+    public Friend acceptFriendRequest(Long requestId) {
+        User recipient = getAuthenticatedUser();
         Friend friendship = friendRepo.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Friend request not found"));
 
@@ -68,9 +57,8 @@ public class FriendService {
         return friendRepo.save(friendship);
     }
 
-    // Reject a friend request
-    public void rejectFriendRequest(String token, Long requestId) {
-        User recipient = getAuthenticatedUser(token);
+    public void rejectFriendRequest(Long requestId) {
+        User recipient = getAuthenticatedUser();
         Friend friendship = friendRepo.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Friend request not found"));
 
@@ -82,22 +70,22 @@ public class FriendService {
         friendRepo.save(friendship);
     }
 
-    // Get pending friend requests
-    public List<Friend> getPendingRequests(String token) {
-        User recipient = getAuthenticatedUser(token);
+    public List<Friend> getPendingRequests() {
+        User recipient = getAuthenticatedUser();
         return friendRepo.findByRecipientAndStatus(recipient, FriendStatus.PENDING);
     }
 
-    // Get list of friends
-    public List<User> getFriends(String token) {
-        User user = getAuthenticatedUser(token);
-        List<Friend> acceptedFriendships = friendRepo.findByRequesterAndStatus(user, FriendStatus.ACCEPTED);
+    public List<User> getFriends() {
+        User user = getAuthenticatedUser();
+        List<Friend> acceptedFriendships = new ArrayList<>();
+        acceptedFriendships.addAll(friendRepo.findByRequesterAndStatus(user, FriendStatus.ACCEPTED));
         acceptedFriendships.addAll(friendRepo.findByRecipientAndStatus(user, FriendStatus.ACCEPTED));
 
         List<User> friends = new ArrayList<>();
         for (Friend friend : acceptedFriendships) {
             friends.add(friend.getRequester().equals(user) ? friend.getRecipient() : friend.getRequester());
         }
+
         return friends;
     }
 }

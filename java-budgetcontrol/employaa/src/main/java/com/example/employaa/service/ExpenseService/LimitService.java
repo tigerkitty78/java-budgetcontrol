@@ -28,35 +28,50 @@ public class LimitService {
     private final UserService userService;
     private final JWT_util jwtUtil;
 
-    // 🔐 Helper: Get Authenticated User
+    //  Helper: Get Authenticated User
     public User getAuthenticatedUser(String token) {
-        String username = jwtUtil.extractUsername(token.replace("Bearer ", ""));
-        User user = userService.findByUsername(username);
-        if (user == null) throw new RuntimeException("User not found");
-        return user;
+        try {
+            String username = jwtUtil.extractUsername(token.replace("Bearer ", ""));
+            User user = userService.findByUsername(username);
+            if (user == null) {
+                throw new RuntimeException("User not found");
+            }
+            return user;
+        } catch (Exception e) {
+            throw new RuntimeException("Error extracting user from token: " + e.getMessage());
+        }
     }
 
-    // ✅ POST: Add or Update Limit
+    //  POST: Add or Update Limit
     public Limits postLimits(Limits limits, String token) {
         User user = getAuthenticatedUser(token);
         limits.setUser(user); // assuming you will re-enable the user field in Limits entity
 
         Optional<Limits> existingLimitOpt = limitrepo.findByUserAndLimitType(user, limits.getLimitType());
 
-        if (existingLimitOpt.isPresent()) {
-            Limits existingLimit = existingLimitOpt.get();
-            existingLimit.setLimitValue(limits.getLimitValue());
-            existingLimit.setUpdatedAt(LocalDateTime.now());
-            return limitrepo.save(existingLimit);
-        } else {
-            return limitrepo.save(limits);
+        try {
+            if (existingLimitOpt.isPresent()) {
+                Limits existingLimit = existingLimitOpt.get();
+                existingLimit.setLimitValue(limits.getLimitValue());
+                existingLimit.setUpdatedAt(LocalDateTime.now());
+                return limitrepo.save(existingLimit);
+            } else {
+                return limitrepo.save(limits);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Error saving limit: " + e.getMessage());
         }
     }
 
-    // ✅ GET: All Limits for Authenticated User
+    //  GET: All Limits for Authenticated User
     public List<Limits> getAllLimits(String token) {
         User user = getAuthenticatedUser(token);
-        return limitrepo.findByUser(user);
+        try {
+            return limitrepo.findByUser(user);
+        } catch (Exception e) {
+            throw new RuntimeException("Error fetching limits for user " + user.getUsername() + ": " + e.getMessage());
+        }
     }
 }
+
 

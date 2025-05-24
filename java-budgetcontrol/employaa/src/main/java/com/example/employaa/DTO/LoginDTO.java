@@ -4,7 +4,7 @@ public class LoginDTO {
     private String username;
     private String password;
     private String email;
-
+    private boolean admin;
     public LoginDTO(String password, String username) {
         this.password = password;
         this.username = username;
@@ -25,7 +25,13 @@ public class LoginDTO {
     public void setUsername(String username) {
         this.username = username;
     }
+    public boolean isAdmin() {
+        return admin;
+    }
 
+    public void setAdmin(boolean admin) {
+        this.admin = admin;
+    }
     public LoginDTO() {
 
     }

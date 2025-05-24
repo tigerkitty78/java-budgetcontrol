@@ -41,6 +41,8 @@ public class InvestmentGoal {
 
     @Column(nullable = false)
     private LocalDateTime updatedAt;
+    @Column(nullable = false)
+    private boolean notificationSent = false;
 
     @PrePersist
     protected void onCreate() {

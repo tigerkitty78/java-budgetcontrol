@@ -6,7 +6,11 @@ import com.example.employaa.entity.user.User;
 import com.example.employaa.service.FriendService.FriendService;
 import com.example.employaa.service.UserService.UserService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,54 +23,71 @@ import java.util.Map;
 @RestController
 @RequestMapping("api/friendships")
 @CrossOrigin(origins = "http://localhost:3000")
+
+
+
 @RequiredArgsConstructor
 public class FriendCont {
+
     private final FriendService friendService;
-    @RestControllerAdvice
-    public class GlobalExceptionHandler {
+    private static final Logger logger = LoggerFactory.getLogger(FriendCont.class);
 
-        @ExceptionHandler(RuntimeException.class)
-        public ResponseEntity<String> handleRuntimeException(RuntimeException ex) {
-            if (ex.getMessage().contains("not found")) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
-            }
-            return ResponseEntity.internalServerError().body(ex.getMessage());
-        }
-    }
-    // Send a friend request
     @PostMapping("/send")
-    public ResponseEntity<?> sendFriendRequest(
-            @RequestBody @Valid Map<String, String> request,
-            @RequestHeader("Authorization") String token
-    ) {
-        if (!request.containsKey("recipientUsername")) {
-            return ResponseEntity.badRequest().body("Recipient username is required");
+    public ResponseEntity<?> sendFriendRequest(@RequestBody @Valid Map<String, String> request) {
+        try {
+            if (!request.containsKey("recipientUsername")) {
+                return ResponseEntity.badRequest().body("Recipient username is required");
+            }
+            Friend friend = friendService.sendFriendRequest(request.get("recipientUsername"));
+            return ResponseEntity.ok(friend);
+        } catch (Exception ex) {
+            logger.error("Error sending friend request: {}", ex.getMessage(), ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ex.getMessage());
         }
-        return ResponseEntity.ok(friendService.sendFriendRequest(token, request.get("recipientUsername")));
     }
-    // Accept a friend request
+
     @PostMapping("/accept/{requestId}")
-    public Friend acceptFriendRequest(@PathVariable Long requestId, @RequestHeader("Authorization") String token) {
-        return friendService.acceptFriendRequest(token, requestId);
+    public ResponseEntity<?> acceptFriendRequest(@PathVariable Long requestId) {
+        try {
+            Friend accepted = friendService.acceptFriendRequest(requestId);
+            return ResponseEntity.ok(accepted);
+        } catch (Exception ex) {
+            logger.error("Error accepting friend request: {}", ex.getMessage(), ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ex.getMessage());
+        }
     }
 
-    // Reject a friend request
     @PostMapping("/reject/{requestId}")
-    public ResponseEntity<String> rejectFriendRequest(@PathVariable Long requestId, @RequestHeader("Authorization") String token) {
-        friendService.rejectFriendRequest(token, requestId);
-        return ResponseEntity.ok("Friend request rejected.");
+    public ResponseEntity<?> rejectFriendRequest(@PathVariable Long requestId) {
+        try {
+            friendService.rejectFriendRequest(requestId);
+            return ResponseEntity.ok("Friend request rejected.");
+        } catch (Exception ex) {
+            logger.error("Error rejecting friend request: {}", ex.getMessage(), ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ex.getMessage());
+        }
     }
 
-    // Get pending friend requests
     @GetMapping("/pending")
-    public List<Friend> getPendingRequests(@RequestHeader("Authorization") String token) {
-        return friendService.getPendingRequests(token);
+    public ResponseEntity<?> getPendingRequests() {
+        try {
+            List<Friend> pending = friendService.getPendingRequests();
+            return ResponseEntity.ok(pending);
+        } catch (Exception ex) {
+            logger.error("Error fetching pending requests: {}", ex.getMessage(), ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Could not fetch pending requests");
+        }
     }
 
-    // Get list of friends
-    @GetMapping("/friends")
-    public List<User> getFriends(@RequestHeader("Authorization") String token) {
-        return friendService.getFriends(token);
+    @GetMapping
+    public ResponseEntity<?> getFriends() {
+        try {
+            List<User> friends = friendService.getFriends();
+            return ResponseEntity.ok(friends);
+        } catch (Exception ex) {
+            logger.error("Error fetching friends: {}", ex.getMessage(), ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Could not fetch friends");
+        }
     }
 }
 

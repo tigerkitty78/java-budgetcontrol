@@ -38,7 +38,24 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
+		<!-- Email -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-mail</artifactId>
+		</dependency>
 
+		<dependency>
+			<groupId>com.slack.api</groupId>
+			<artifactId>slack-api-client</artifactId>
+			<version>1.27.3</version> <!-- or latest -->
+		</dependency>
+
+
+		<dependency>
+			<groupId>com.google.http-client</groupId>
+			<artifactId>google-http-client-jackson2</artifactId>
+			<version>1.43.3</version> <!-- Or latest -->
+		</dependency>
 
 		<!--stripe deps-->
 		<dependency>
@@ -64,11 +81,11 @@
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
 		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
-			<scope>test</scope>
-		</dependency>
+<!--		<dependency>-->
+<!--			<groupId>org.springframework.boot</groupId>-->
+<!--			<artifactId>spring-boot-starter-test</artifactId>-->
+<!--			<scope>test</scope>-->
+<!--		</dependency>-->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webflux</artifactId>
@@ -159,6 +176,12 @@
 			<scope>runtime</scope>
 		</dependency>
 
+
+		<dependency>
+			<groupId>com.fasterxml.jackson.datatype</groupId>
+			<artifactId>jackson-datatype-jsr310</artifactId>
+			<version>2.15.3</version>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.security</groupId>
 			<artifactId>spring-security-oauth2-resource-server</artifactId>
@@ -177,6 +200,17 @@
 			<groupId>com.paypal.sdk</groupId>
 			<artifactId>rest-api-sdk</artifactId>
 			<version>1.14.0</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.fasterxml.jackson.datatype</groupId>
+			<artifactId>jackson-datatype-jsr310</artifactId>
+			<version>2.15.3</version>
+		</dependency>
+		<dependency>
+			<groupId>com.fasterxml.jackson.datatype</groupId>
+			<artifactId>jackson-datatype-jdk8</artifactId>
+			<version>2.15.3</version>
 		</dependency>
 		<dependency>
 			<groupId>com.sun.mail</groupId>

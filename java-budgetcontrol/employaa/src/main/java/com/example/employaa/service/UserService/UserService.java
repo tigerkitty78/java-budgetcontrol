@@ -2,10 +2,18 @@ package com.example.employaa.service.UserService;
 
 import com.example.employaa.DTO.LoginDTO;
 import com.example.employaa.DTO.UserDTO;
+import com.example.employaa.JWT.JWT_util;
+import com.example.employaa.controller.AuthCont.AuthenticationController;
 import com.example.employaa.entity.user.LoginResponse;
 import com.example.employaa.entity.user.User;
 import com.example.employaa.repository.UserRepo.UserRepo;
+import com.example.employaa.service.StripeService.StripeService;
+import com.stripe.exception.StripeException;
+import com.stripe.model.Account;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,9 +26,25 @@ import java.util.stream.StreamSupport;
 
 @Service
 @RequiredArgsConstructor
+
 public class UserService implements UserDetailsService {
     private final UserRepo userRepo;
     private final PasswordEncoder passwordEncoder;
+
+
+
+//    @Autowired
+    private StripeService stripeService; // Service containing createConnectedAccount
+
+    public void onboardCurrentUserToStripe(String token, StripeService stripeService) throws StripeException {
+        User user = getCurrentUser();
+        Account account = stripeService.createConnectedAccount(user);
+
+        // Save Stripe account ID to the user entity
+        user.setStripeAccountId(account.getId());
+        userRepo.save(user);
+    }
+
     public List<User> getUsers() {
         return StreamSupport.stream(userRepo.findAll().spliterator(), false)
                 .collect(Collectors.toList());
@@ -31,7 +55,20 @@ public class UserService implements UserDetailsService {
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         return userRepo.save(user);
     }
+    public User registerUser(AuthenticationController.UserRegistrationDto registrationDto) {
+        if (userRepo.existsByUsername(registrationDto.username())) {
+            throw new IllegalArgumentException("Username already exists");
+        }
 
+        User newUser = new User();
+        newUser.setUsername(registrationDto.username());
+        newUser.setPassword(passwordEncoder.encode(registrationDto.password()));
+        newUser.setEmail(registrationDto.email());
+        newUser.setFullName(registrationDto.fullName()); // ✅ Set fullName
+        newUser.setAdmin(registrationDto.admin() != null && registrationDto.admin());
+
+        return userRepo.save(newUser);
+    }
 
 
     // GET - Fetch User by ID
@@ -55,6 +92,7 @@ public class UserService implements UserDetailsService {
         userDto.setFullName(user.getFullName()); // Directly map fullName
         userDto.setUsername(user.getUsername());
         userDto.setEmail(user.getEmail());
+        userDto.setAdmin(user.isAdmin());
         return userDto;
     }
     // Modify the method to return User instead of String
@@ -76,9 +114,24 @@ public class UserService implements UserDetailsService {
     }
 
 
+/////////////////
+//    public LoginResponse loginmessage(LoginDTO loginDTO) {
+//        // Retrieve the user by username or email
+//        User user = userRepo.findByEmail(loginDTO.getEmail())
+//                .orElseThrow(() -> new RuntimeException("User not found"));
+//
+//        // Check if the password matches
+//        if (!passwordEncoder.matches(loginDTO.getPassword(), user.getPassword())) {
+//            throw new RuntimeException("Invalid credentials");
+//        }
+//
+//        // Prepare the success response
+//        return new LoginResponse("Login successful", user.getId(), user.getEmail());
+//    }
+ //////////////////////////////
 
     public LoginResponse loginmessage(LoginDTO loginDTO) {
-        // Retrieve the user by username or email
+        // Retrieve the user by email
         User user = userRepo.findByEmail(loginDTO.getEmail())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -87,9 +140,13 @@ public class UserService implements UserDetailsService {
             throw new RuntimeException("Invalid credentials");
         }
 
-        // Prepare the success response
-        return new LoginResponse("Login successful", user.getId(), user.getEmail());
+        // Prepare the success response including admin flag
+        return new LoginResponse("Login successful", user.getId(), user.getEmail(), user.isAdmin());
     }
+
+
+
+
     // GET - Find User by Email
    // public User findUserByEmail(String email) {
        // return userRepo.findByEmail(email);
@@ -99,6 +156,15 @@ public class UserService implements UserDetailsService {
     //public LoginResponse login(LoginDTO loginDTO){
 
     //}
+
+
+  //get current user
+  public User getCurrentUser() {
+      Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+      return userRepo.findByUsername(authentication.getName())
+              .orElseThrow(() -> new IllegalStateException("User not logged in"));
+  }
+
 
 
 }
