@@ -43,7 +43,7 @@ public class NotificationService {
     private final SseEmittersManager sseEmittersManager;// You'll implement this
 private final UserRepo userRepo;
     private final JWT_util jwtUtil;
-    private final SlackService slackService;
+  //  private final SlackService slackService;
 
 
     private User getAuthenticatedUser() {
@@ -103,7 +103,7 @@ private final UserRepo userRepo;
         sseEmittersManager.sendToUser(user.getUsername(), notif);
 
 
-        slackService.sendSlackMessage("🔔 New notification for " + user.getUsername() + ": " + message);
+     //   slackService.sendSlackMessage("🔔 New notification for " + user.getUsername() + ": " + message);
     }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     private final GmailService gmailService;

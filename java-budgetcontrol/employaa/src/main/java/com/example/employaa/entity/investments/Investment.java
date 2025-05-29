@@ -66,6 +66,10 @@ public class Investment {
     @Column(precision = 15, scale = 2)
     private BigDecimal returns; // Expected or realized returns
 
+
+    @Column(nullable = false)
+    private BigDecimal currentValue;
+
     //@Enumerated(EnumType.STRING)
     //private RiskLevel riskLevel;
 

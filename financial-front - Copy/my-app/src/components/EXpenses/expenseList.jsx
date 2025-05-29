@@ -1,122 +1,369 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { getExpenses } from "../../Redux/ExpenseSlice";
+import { getExpenses,removeExpense } from "../../Redux/ExpenseSlice";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import { useState } from 'react';
+
 
 const ExpenseList = () => {
   const dispatch = useDispatch();
   const { expenses, isLoading, error } = useSelector((state) => state.expenseSlice);
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
+
+  const [filteredExpenses, setFilteredExpenses] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState("");
+
   useEffect(() => {
     dispatch(getExpenses());
   }, [dispatch]);
+  useEffect(() => {
+    dispatch(removeExpense());
+  }, [dispatch]);
 
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
+  useEffect(() => {
+    filterExpenses();
+  }, [expenses, selectedDate, selectedCategory, selectedMonth]);
 
-  if (error) {
-    return <div>{error}</div>;
-  }
+  const calculateTotals = () => {
+  let dailyTotal = 0;
+  let monthlyTotal = 0;
 
-  const handleEdit = (id) => {
-    navigate(`/expense/${id}`); // Navigate to the edit page with the ID
+  const selectedDateStr = selectedDate?.toDateString();
+  const selectedMonthNum = selectedMonth !== "" ? parseInt(selectedMonth) : null;
+
+  filteredExpenses.forEach(expense => {
+    const expenseDate = new Date(expense.date);
+    const expenseAmount = parseFloat(expense.amount);
+
+    if (!isNaN(expenseAmount)) {
+      if (selectedDate && expenseDate.toDateString() === selectedDateStr) {
+        dailyTotal += expenseAmount;
+      }
+
+      if (selectedMonthNum !== null && expenseDate.getMonth() === selectedMonthNum) {
+        monthlyTotal += expenseAmount;
+      }
+    }
+  });
+
+  return {
+    daily: dailyTotal.toFixed(2),
+    monthly: monthlyTotal.toFixed(2),
+  };
+};
+
+const totals = calculateTotals();
+
+
+  const filterExpenses = () => {
+    let filtered = expenses;
+    if (selectedDate) {
+      filtered = filtered.filter(expense => 
+        new Date(expense.date).toDateString() === selectedDate.toDateString()
+      );
+    }
+    if (selectedCategory) {
+      filtered = filtered.filter(expense => expense.category === selectedCategory);
+    }
+    if (selectedMonth) {
+      filtered = filtered.filter(expense => 
+        new Date(expense.date).getMonth() === parseInt(selectedMonth)
+      );
+    }
+    setFilteredExpenses(filtered);
   };
 
+  const handleEdit = (id) => navigate(`/expense/${id}`);
+  const delex = (id) => {
+    if (!id) {
+      console.error("No ID passed to delex");
+      return;
+    }
+  
+    if (window.confirm("Are you sure you want to delete this expense?")) {
+      dispatch(removeExpense(id))
+        .then((res) => {
+          if (!res.error) {
+            alert("Expense deleted successfully.");
+          } else {
+            alert("Failed to delete expense.");
+          }
+        });
+    }
+  };
+  
+  
+  const monthOptions = [
+    "January", "February", "March", "April", "May", "June", 
+    "July", "August", "September", "October", "November", "December"
+  ];
+
+  const categories = {
+    essentials: [
+      'Housing', 'Utilities', 'Food (Groceries)', 
+      'Healthcare', 'Transportation (Basic Commute)'
+    ],
+    financial: [
+      'Debt Repayment', 'Insurance', 'Childcare & Family', 'Education'
+    ],
+    lifestyle: [
+      'Entertainment', 'Personal Expenses', 
+      'Gifts & Donations', 'Miscellaneous'
+    ]
+  };
+
+  // Animation styles
+  const waveAnimation = {
+    position: 'absolute',
+    width: '300px',
+    height: '300px',
+    background: 'rgba(72, 130, 113, 0.1)',
+    borderRadius: '40%',
+    animation: 'wave 12s infinite linear'
+  };
+
+  const keyframes = `
+    @keyframes wave {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+  `;
   return (
-    <div className="container py-4 " style={{  minHeight: "100vh" }}>
+    <div className="container py-4" style={{ minHeight: "100vh" }}>
+      <style>{keyframes}</style>
       
-      
-      <div class="e-card playing" >
-     
-      <div class="wave"></div>
-  <div class="wave"></div>
-  <div class="wave"></div>
-  <div class="infotop">
-
-
-<path fill="currentColor" d="M19.4133 4.89862L14.5863 2.17544C12.9911 1.27485 11.0089 1.27485 9.41368 2.17544L4.58674
-4.89862C2.99153 5.7992 2 7.47596 2 9.2763V14.7235C2 16.5238 2.99153 18.2014 4.58674 19.1012L9.41368
-21.8252C10.2079 22.2734 11.105 22.5 12.0046 22.5C12.6952 22.5 13.3874 22.3657 14.0349 22.0954C14.2204
-22.018 14.4059 21.9273 14.5872 21.8252L19.4141 19.1012C19.9765 18.7831 20.4655 18.3728 20.8651
-17.8825C21.597 16.9894 22 15.8671 22 14.7243V9.27713C22 7.47678 21.0085 5.7992 19.4133 4.89862ZM4.10784
-14.7235V9.2763C4.10784 8.20928 4.6955 7.21559 5.64066 6.68166L10.4676 3.95848C10.9398 3.69152 11.4701
-3.55804 11.9996 3.55804C12.5291 3.55804 13.0594 3.69152 13.5324 3.95848L18.3593 6.68166C19.3045 7.21476
-19.8922 8.20928 19.8922 9.2763V9.75997C19.1426 9.60836 18.377 9.53091 17.6022 9.53091C14.7929 9.53091
-12.1041 10.5501 10.0309 12.3999C8.36735 13.8847 7.21142 15.8012 6.68783 17.9081L5.63981 17.3165C4.69466
-16.7834 4.10699 15.7897 4.10699 14.7235H4.10784ZM10.4676 20.0413L8.60933 18.9924C8.94996 17.0479 9.94402
-15.2665 11.4515 13.921C13.1353 12.4181 15.3198 11.5908 17.6022 11.5908C18.3804 11.5908 19.1477 11.6864
-19.8922 11.8742V14.7235C19.8922 15.2278 19.7589 15.7254 19.5119 16.1662C18.7615 15.3596 17.6806 14.8528
-16.4783 14.8528C14.2136 14.8528 12.3781 16.6466 12.3781 18.8598C12.3781 19.3937 12.4861 19.9021 12.68
-20.3676C11.9347 20.5316 11.1396 20.4203 10.4684 20.0413H10.4676Z"></path><br/>      
-
-<br/></div>
-
-<div class = "card " style ={{padding:"30px",marginTop:"60px",borderRadius:"10px",boxShadow: "2px 2px 4px rgba(0, 0, 0, 0.1)" }}>
-        <h5 className="mb-3">Filter By</h5>
-        <div className="row g-2" style={{width:"auto"}}>
-          <div className="col-md-3  " style={{background:"#ceede4",borderRadius:"10px",padding:"15px",marginRight:"10px"}}>
-            <label className="form-label">Date</label>
-            <select className="form-select">
-              <option>Select Date</option>
-            </select>
-          </div>
-          <div className="col-md-3  " style={{background:"white",borderRadius:"10px",padding:"15px",marginRight:"10px",border: "1px solid #488271",}}>
-            <label className="form-label">Category</label>
-            <select className="form-select">
-              <option>Select Category</option>
-            </select>
-          </div>
-          <div className="col-md-3 " style={{background:"#ceede4",borderRadius:"10px",padding:"15px"}}>
-            <label className="form-label">Month</label>
-            <select className="form-select">
-              <option>Select Month</option>
-            </select>
-          </div>
-          <div className="col-md-2 p-2  rounded" style={{border: "1px solid #488271",marginLeft:"20px" ,color:"#488271"}}> <strong>Monthly Total: 5000</strong> <br />
-          <strong>Daily Total: 5000</strong></div>
-        </div>
+      <div style={{
+        position: 'relative',
+        overflow: 'hidden',
+        borderRadius: '15px',
+        background: '#ffffff',
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+      }}>
+        {/* Animated waves */}
+        {/* <div style={waveAnimation}></div> */}
+        {/* <div style={{ ...waveAnimation, animationDelay: '4s' }}></div>
+        <div style={{ ...waveAnimation, animationDelay: '8s' }}></div> */}
         
-      </div>
-      </div>
-      <div className="row g-2 align-items-start justify-content-start" style={{width:"auto"}}>
-      {expenses.length === 0 ? (
-        <div className="mt-4">No expenses found.</div>
-      ) : (
-        expenses.map((expense) => (
-          <div className="col-md-5  " style={{
-            background: "#ffffff",
-            borderRadius: "10px",
-            padding: "5px",
-            marginRight: "5px",
-           
-          }}>
-          <div className="card mt-4 p-3 " style={{ backgroundColor: "#ffffff",margin:"10px", boxShadow: "2px 2px 4px rgba(0, 0, 0, 0.1)" }} key={expense.id}>
-            <div className="d-flex justify-content-between align-items-center">
-              <div>
-              
-                <strong>{expense.category}</strong>
+        {/* Filter card */}
+        <div style={{
+          border: 'none',
+          borderRadius: '12px',
+          background: '#f8f9fa',
+          marginBottom: '2rem'
+        }}>
+          <div style={{ padding: '1.5rem' }}>
+            <h5 style={{ 
+              marginBottom: '1.5rem',
+              color: '#2c3e50',
+              fontWeight: '600'
+            }}>Filter Expenses</h5>
+            
+            <div className="row g-3">
+              <div className="col-12 col-md-6 col-lg-3">
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '0.5rem',
+                    color: '#488271',
+                    fontWeight: '500'
+                  }}>Date</label>
+                  <DatePicker
+                    selected={selectedDate}
+                    onChange={date => setSelectedDate(date)}
+                    style={{
+                      width: '100%',
+                      padding: '0.375rem 0.75rem',
+                      border: '1px solid #ced4da',
+                      borderRadius: '0.375rem'
+                    }}
+                    placeholderText="Select Date"
+                    isClearable
+                  />
+                </div>
               </div>
-              <div className="fw-bold">Amount: ${expense.amount}</div>
-              <div className="col-md-6">
- 
-                <button class="btn" style={{ backgroundColor: "#488271",marginLeft:"20px" }}>delete</button>
-                <button class="btn" style={{ backgroundColor: "#488271",marginLeft:"20px" }} onClick={() => handleEdit(expense.id)}>edit</button>
-                
+
+              <div className="col-12 col-md-6 col-lg-3">
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '0.5rem',
+                    color: '#488271',
+                    fontWeight: '500'
+                  }}>Month</label>
+                  <select 
+                    style={{
+                      width: '100%',
+                      padding: '0.375rem 0.75rem',
+                      border: '1px solid #ced4da',
+                      borderRadius: '0.375rem'
+                    }}
+                    value={selectedMonth}
+                    onChange={e => setSelectedMonth(e.target.value)}
+                  >
+                    <option value="">All Months</option>
+                    {monthOptions.map((month, index) => (
+                      <option key={index} value={index}>{month}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="col-12 col-md-6 col-lg-3">
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '0.5rem',
+                    color: '#488271',
+                    fontWeight: '500'
+                  }}>Category</label>
+                  <select
+                    style={{
+                      width: '100%',
+                      padding: '0.375rem 0.75rem',
+                      border: '1px solid #ced4da',
+                      borderRadius: '0.375rem'
+                    }}
+                    value={selectedCategory}
+                    onChange={e => setSelectedCategory(e.target.value)}
+                  >
+                    <option value="">All Categories</option>
+                    <optgroup label="Essentials">
+                      {categories.essentials.map((cat, i) => (
+                        <option key={`ess-${i}`} value={cat}>{cat}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Financial">
+                      {categories.financial.map((cat, i) => (
+                        <option key={`fin-${i}`} value={cat}>{cat}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Lifestyle">
+                      {categories.lifestyle.map((cat, i) => (
+                        <option key={`life-${i}`} value={cat}>{cat}</option>
+                      ))}
+                    </optgroup>
+                  </select>
+                </div>
+              </div>
+
+              <div className="col-12 col-md-6 col-lg-3">
+                <div style={{
+                  background: '#ffffff',
+                  border: '1px solid #488271',
+                  borderRadius: '8px',
+                  padding: '1rem'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginBottom: '0.5rem'
+                  }}>
+                    <span>Monthly Total:</span>
+                    <strong style={{ color: '#488271' }}>LKR{totals.monthly}</strong>
+                  </div>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between'
+                  }}>
+                    <span>Daily Total:</span>
+                   <strong style={{ color: '#488271' }}>LKR{totals.daily}</strong>
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="mt-2">
-              <p className="mb-1">Date: {new Date(expense.date).toLocaleDateString()}</p>
-              <p className="mb-1">Description: {expense.description}</p>
-              <p className="mb-1">User: {expense.user.fullName}</p>
+          </div>
+        </div>
+
+        {/* Expense list */}
+        <div style={{ marginTop: '1.5rem', padding: '0 1.5rem 1.5rem' }}>
+          {isLoading ? (
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '2rem',
+              color: '#6c757d'
+            }}>Loading expenses...</div>
+          ) : error ? (
+            <div className="alert alert-danger">{error}</div>
+          ) : filteredExpenses.length === 0 ? (
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '2rem',
+              color: '#6c757d'
+            }}>No expenses found matching your filters</div>
+          ) : (
+            <div className="row g-3">
+              {filteredExpenses.map((expense) => (
+                <div className="col-12 col-md-6 col-lg-4" key={expense.id}>
+                  <div style={{
+                    border: 'none',
+                    borderRadius: '12px',
+                    background: '#ffffff',
+                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                    transition: 'transform 0.2s ease',
+                    overflow: 'hidden'
+                  }}>
+                    <div style={{
+                      padding: '1rem',
+                      background: '#e8fcf5',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}>
+                      <span style={{
+                        background: '#488271',
+                        color: 'white',
+                        padding: '0.25rem 0.75rem',
+                        borderRadius: '20px',
+                        fontSize: '0.85rem'
+                      }}>{expense.category}</span>
+                      <div style={{
+                        fontSize: '1.25rem',
+                        fontWeight: '600',
+                        color: '#2c3e50'
+                      }}>LKR{expense.amount}</div>
+                    </div>
+                    <div style={{ padding: '1rem' }}>
+                      <div style={{ marginBottom: '1rem' }}>
+                        <p style={{ 
+                          marginBottom: '0.5rem',
+                          color: '#6c757d'
+                        }}>
+                          {new Date(expense.date).toLocaleDateString()}
+                        </p>
+                        <p style={{ marginBottom: '0.5rem' }}>{expense.description}</p>
+                        <p style={{ color: '#6c757d' }}>{expense.user.fullName}</p>
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'flex-end',
+                        gap: '0.5rem'
+                      }}>
+                        <button 
+                          button className="btn" style={{ backgroundColor: "#e8fcf5", marginLeft: "20px" }}
+                          onClick={() => handleEdit(expense.id)}
+                        >
+                          edit
+                        </button>
+                        <button onClick={() => delex(expense.id)} className="btn" style={{ backgroundColor: "#e8fcf5", marginLeft: "20px" }}>
+                       delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-          </div></div>
-        ))
-      )}
-    </div></div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 };
 

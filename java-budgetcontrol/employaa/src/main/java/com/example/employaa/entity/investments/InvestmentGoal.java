@@ -1,12 +1,15 @@
 package com.example.employaa.entity.investments;
 
 import com.example.employaa.entity.user.User;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Data;
 
 import java.time.LocalDate;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 
 @Data
@@ -38,6 +41,15 @@ public class InvestmentGoal {
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
+
+    @Column(nullable = false)
+    private BigDecimal expectedAnnualReturn; // e.g., 0.05 for 5%
+
+    @OneToMany(mappedBy = "investmentGoal", cascade = CascadeType.ALL)
+    @JsonManagedReference
+    private List<InvestmentContribution> contributions = new ArrayList<>();
+// track deposits & earnings over time
+
 
     @Column(nullable = false)
     private LocalDateTime updatedAt;

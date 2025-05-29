@@ -50,7 +50,7 @@ public class ExpensesCont {
 
     @CrossOrigin(origins = "http://localhost:3000")
     @GetMapping("/expenses")
-    public ResponseEntity<?> getAllExpenses(@RequestHeader("Authorization") String token) {
+    public ResponseEntity<?> getAllExpenses() {
         try {
             List<Expenses> expenses = expenseService.getExpensesByUser();
             return ResponseEntity.ok(expenses);
@@ -65,7 +65,7 @@ public class ExpensesCont {
         List<Expenses> expenses = expenseService.getExpensesByUser();
 //        String token = getCurrentAuthorizationToken();
 
-        return webClientBuilder.build()
+        return webClientBuilder.build()//build a post request to forecast script
                 .post()
                 .uri(PYTHON_API_URL)
 //              .header("Authorization", token)
@@ -80,7 +80,7 @@ public class ExpensesCont {
         List<Expenses> expenses = expenseService.getExpensesByUser();
 //        String token = getCurrentAuthorizationToken();
 
-        return webClientBuilder.build()
+        return webClientBuilder.build()//build a post request to sentiment script
                 .post()
                 .uri(PYTHON_API_URL2)
 //              .header("Authorization", token)
@@ -139,11 +139,5 @@ public class ExpensesCont {
         }
     }
 
-    private String getCurrentAuthorizationToken() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.getCredentials() instanceof String token) {
-            return token;
-        }
-        throw new RuntimeException("No valid authorization token found");
-    }
+
 }

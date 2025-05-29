@@ -11,7 +11,7 @@ public class PaymentModel {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id;
+    private Long id;
     private double amount;
     private Long walletId;
     private String billType;
@@ -23,7 +23,7 @@ public class PaymentModel {
     public PaymentModel() {
     }
 
-    public PaymentModel(int id, double amount,  Long walletId, String billType, String status) {
+    public PaymentModel(Long id, double amount,  Long walletId, String billType, String status) {
         this.id = id;
         this.amount = amount;
         this.walletId = walletId;
@@ -31,11 +31,11 @@ public class PaymentModel {
         this.status = status;
     }
 
-    public int getId() {
+    public Long getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(Long id) {
         this.id = id;
     }
 

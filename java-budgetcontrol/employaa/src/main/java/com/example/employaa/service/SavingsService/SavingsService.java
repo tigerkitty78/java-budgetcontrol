@@ -108,4 +108,22 @@ public class SavingsService {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to update savings goal", e);
         }
     }
+
+    public void deleteSavings(Long id, String token) {
+        try {
+            User user = getUserFromToken(token);
+            SavingsGoal existing = savingsRepo.findById(id)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Savings goal not found"));
+
+            if (!existing.getUser().getId().equals(user.getId())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Unauthorized to delete this savings goal");
+            }
+
+            savingsRepo.delete(existing);
+        } catch (ResponseStatusException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to delete savings goal", e);
+        }
+    }
 }

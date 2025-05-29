@@ -33,6 +33,7 @@ public class InvestmentService {
         validateInvestment(investment);
         User user = getAuthenticatedUser(token);
         investment.setUser(user);
+        investment.setCurrentValue(investment.getAmount());
         return investmentRepository.save(investment);
     }
 

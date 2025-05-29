@@ -66,5 +66,27 @@ public class SavingsCont {
         return ResponseEntity.ok(updated);
     }
 
+    @RestController
+    @RequestMapping("/api/savings")
+    @CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true") // Adjust as needed
+    public class SavingsController {
+
+        private final SavingsService savingsService;
+
+        public SavingsController(SavingsService savingsService) {
+            this.savingsService = savingsService;
+        }
+
+        // DELETE: /api/savings/{id}
+        @DeleteMapping("/{id}")
+        public ResponseEntity<?> deleteSavings(@PathVariable Long id,
+                                               @RequestHeader("Authorization") String token) {
+            savingsService.deleteSavings(id, token);
+            return ResponseEntity.noContent().build(); // 204 No Content
+        }
+
+        // ...other existing methods
+
+    }
 
 }
